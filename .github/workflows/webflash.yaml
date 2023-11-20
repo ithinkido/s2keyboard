@@ -1,0 +1,75 @@
+name: Web Flash
+
+on:
+  push:
+    branches: ["main"]
+    paths-ignore:
+      - '**.md'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/cache@v3
+    - name: Cache pip
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    - name: Cache PlatformIO
+      uses: actions/cache@v3
+      with:
+        path: ~/.platformio
+        key: ${{ runner.os }}-${{ hashFiles('**/lockfiles') }}
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    - name: Install PlatformIO
+      run: |
+        python -m pip install --upgrade pip
+        pip install --upgrade platformio
+    - name: Build
+      run: platformio run
+    - name: Copy compiled binaries for webflash
+      run: |
+          for dir in .pio/build/*/; do
+              mkdir -p "./webflash/$(basename "$dir")"
+              cp "${dir}"*.bin "./webflash/$(basename "$dir")"
+              cp ./webflash/manifest.json "./webflash/$(basename "$dir")"
+          done
+    - name: Add menu options to web page 
+      run: |
+          for dir in .pio/build/*/; do
+            entry=""
+            entry="<option data-manifest="manifest.json">"$(basename "$dir")"</option>"
+
+            if ! grep -q "$entry" webflash/index.html; then
+              echo "adding device to selection mernu"
+              sed -i "/<select id=\"device\" class=\"menu\" onchange=\"setManifest()\">/a \\                       $entry\r" webflash/index.html
+            fi
+          done        
+    - name: Setup Github Page
+      uses: actions/configure-pages@v3
+    - name: Upload webflash
+      uses: actions/upload-pages-artifact@v2
+      with:
+        path: ./webflash
+##########
+  deploy:
+    needs: build
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write 
+      id-token: write
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v2
