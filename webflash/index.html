@@ -230,7 +230,9 @@
 	<script>
 		function setManifest() {
 			var sel = document.getElementById('device');
-			var m = opt.dataset.manifest;
+			var entryName = sel.options[sel.selectedIndex].text;
+			var m = entryName + '/manifest.json';
+			console.log(m)
 			document.getElementById('inst').setAttribute('manifest', m);
 		}
 

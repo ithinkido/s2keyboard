@@ -46,7 +46,8 @@ jobs:
           done
     - name: Add menu options to web page 
       run: |
-          for dir in .pio/build/*/; do
+          for dir in .pio/build/*/; 
+          do
             entry=""
             entry="<option data-manifest="manifest.json">"$(basename "$dir")"</option>"
 
